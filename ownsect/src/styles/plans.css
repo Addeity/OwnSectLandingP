@@ -1,0 +1,245 @@
+/* -------------------------------------------------------- pricing: plans */
+/* The billing switch and the four plans. Everything here that moves does so
+   on the compositor (transforms and opacity: a pill that slides, digits that
+   roll, a light that runs round an edge), and says what moves it:
+     the switch's pill, the prices, the notes    src/ui/plans.ts
+     the tilt under a mouse                      src/ui/plans.ts
+     the light that follows it                   src/ui/spotlight.ts (--mx, --my)
+     arriving                                    .is-in, src/ui/router.ts
+   With reduced motion nothing rolls, tilts or runs: values change in place,
+   and a plan fades in whole. "Pause motion" holds whatever loops. */
+
+/* the switch: with scripts, a pill under the two words slides to the period
+   chosen, with a little overshoot, as something switched does (--spring-soft);
+   without them, the chosen word wears the pill itself */
+.billing {
+  position: relative; display: inline-flex; gap: 4px; margin-top: 26px; padding: 4px;
+  border: 1px solid var(--glass-b); border-radius: var(--r-pill); background: var(--surface);
+}
+.billing button {
+  position: relative; z-index: 1;
+  border: 0; background: none; cursor: pointer; padding: 8px 16px;
+  border-radius: var(--r-pill); font-family: inherit; font-size: 13.5px; font-weight: 500; color: var(--ink-2);
+  transition: color var(--t-2) var(--e-out), background-color var(--t-2) var(--e-out), scale var(--t-1) var(--e-out);
+}
+.billing button:hover { color: var(--ink); }
+.billing button:active { scale: .96; }
+.billing button.is-on { background: var(--ink); color: var(--ground); }
+.billing__pill {
+  position: absolute; top: 4px; bottom: 4px; left: 0; width: 0;
+  border-radius: var(--r-pill); background: var(--ink); opacity: 0; pointer-events: none;
+}
+.billing.has-pill .billing__pill { opacity: 1; }
+.billing.has-pill button.is-on { background: none; }
+.billing__save { display: inline-block; margin-left: 6px; color: var(--cobalt-on); font-size: 12px; transition: color var(--t-2) var(--e-out); }
+.billing button.is-on .billing__save { color: var(--cobalt); }
+/* on the light page the pill is dark: the deep cobalt would sink into it */
+:root[data-theme="light"] .billing button.is-on .billing__save { color: #7ab0ff; }
+
+/* --------------------------------------------------------------- a plan */
+.plans { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 900px) { .plans { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .plans { grid-template-columns: minmax(0, 1fr); } }
+.plan {
+  position: relative; display: flex; flex-direction: column;
+  padding: 26px 24px 24px;
+  border-radius: var(--r-card); border: 1px solid var(--line-2);
+  background: var(--surface); color: var(--ink);
+  transition: border-color var(--t-2) var(--e-out);
+}
+.plan:not(.plan--featured):hover { border-color: var(--line-3); }
+/* under a mouse a plan lifts toward it (src/ui/plans.ts tilts it): the shadow
+   it then casts is drawn once and faded in, rather than repainted as it grows */
+.plan:not(.plan--featured)::before {
+  content: ""; position: absolute; inset: 0; z-index: -2; border-radius: inherit; pointer-events: none;
+  box-shadow: var(--lift); opacity: 0; transition: opacity var(--t-3) var(--e-out);
+}
+.plan:not(.plan--featured):hover::before { opacity: 1; }
+
+.plan__name { margin: 0 0 6px; font-family: var(--serif); font-size: 26px; font-weight: 400; letter-spacing: -.01em; }
+.plan__for { margin: 0 0 22px; font-size: 13.5px; line-height: 1.5; color: var(--ink-3); min-height: 3em; }
+.plan__price { display: flex; align-items: baseline; gap: 6px; margin: 0 0 4px; }
+.plan__amt { font-size: 38px; font-weight: 500; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.plan__per { font-size: 13px; color: var(--ink-3); }
+.plan__note { margin: 0 0 20px; font-size: 12px; color: var(--ink-3); }
+
+/* the figure as columns of digits that roll to a new value (src/ui/plans.ts
+   builds them from the figure; without scripts it stays the figure). Each
+   column is one digit tall and clipped to it; inside, a strip of digits
+   moves to the one shown. An invisible digit holds the column's width and
+   the row's baseline. The strip runs blank, 0 to 9, then 0 again, so a
+   spring that overshoots either end shows a digit, never a gap. */
+.odo { display: inline-flex; line-height: 1; user-select: none; }
+/* a digit passing through fades at the window's top and bottom rather than
+   being cut there; the window is a little wider than the digit (and given
+   back by the margin), so a glyph's edge is never clipped */
+.odo__c {
+  position: relative; display: inline-block; padding: 0 .06em; margin: 0 -.06em;
+  -webkit-mask-image: linear-gradient(transparent, #000 .15em, #000 .88em, transparent);
+  mask-image: linear-gradient(transparent, #000 .15em, #000 .88em, transparent);
+}
+.odo__g { visibility: hidden; }
+.odo__strip {
+  position: absolute; top: 0; left: .06em; right: .06em; white-space: pre;
+  transform: translateY(calc((var(--n, 0) + 1) * -1em));
+  transition: transform var(--t-4) var(--spring-soft) calc(var(--c, 0) * 45ms + var(--p, 0) * 40ms);
+}
+
+.plan__cta { align-self: flex-start; gap: 8px; margin-bottom: 20px; }
+.plan__go { width: 15px; height: 15px; margin-right: -3px; transition: translate var(--t-3) var(--spring-soft); }
+.plan__cta:hover .plan__go { translate: 3px 0; }
+/* the pill inside a sheet: quiet on the dark plans, cobalt on the light one */
+.btn--ink { background: var(--surface-3); color: var(--ink); border-color: var(--line-2); }
+.btn--ink:hover { background: color-mix(in srgb, var(--surface-3), var(--ink) 7%); border-color: var(--line-3); }
+
+/* what a plan includes, under a rule; each line ticked, or, for what it
+   leaves out, struck through and marked with a dash */
+.plan__list {
+  position: relative; list-style: none; margin: 0; padding: 20px 0 0;
+  display: grid; gap: 9px; font-size: 13.5px; color: var(--ink-2);
+}
+.plan__list::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: var(--line-2); transform-origin: 0 50%; }
+.plan__list li { position: relative; padding-left: 27px; line-height: 1.45; }
+.plan__list li::before, .plan__list li::after {
+  content: ""; position: absolute; left: 0; top: calc((1.45em - 17px) / 2); width: 17px; height: 17px;
+}
+.plan__list li::before { border-radius: 50%; background: color-mix(in srgb, var(--cobalt-on) 17%, transparent); }
+.plan__list li::after {
+  background: var(--cobalt-on);
+  -webkit-mask: var(--tick) center / 11px no-repeat; mask: var(--tick) center / 11px no-repeat;
+}
+.plan__list li.muted { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-4); }
+.plan__list li.muted::before { background: color-mix(in srgb, var(--ink-4) 34%, transparent); }
+.plan__list li.muted::after { background: var(--ink-3); -webkit-mask-image: var(--dash); mask-image: var(--dash); }
+.plans {
+  --tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.4 6.3 4.9 8.7 9.6 3.6' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --dash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.4 6h5.2' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* ------------------------------------------------------ the chosen plan */
+/* The one sheet in the other theme's colours, the plan most people pick:
+   light on the dark page (the colour the product's own pages are) and dark
+   on the light one. A light runs round its edge, and as it passes it spills
+   a little outside. Layered inside the sheet, bottom to top: the glow and
+   the spill (.plan__glow), the rim and its light (.plan__rim), the face
+   (::before, which covers all of the rim but its outermost pixel), the
+   pointer's light (::after), then the words. */
+.plan--featured {
+  isolation: isolate;
+  background: var(--contra); color: var(--contra-ink); border-color: transparent;
+  box-shadow: var(--lift);
+}
+.plan--featured::before {
+  content: ""; position: absolute; inset: 0; z-index: -2; border-radius: calc(var(--r-card) - 1px); pointer-events: none;
+  background: var(--contra);
+}
+.plan__rim {
+  position: absolute; inset: -1px; z-index: -3; border-radius: inherit; overflow: hidden; pointer-events: none;
+  background: linear-gradient(160deg, rgba(80,152,248,.7), rgba(80,152,248,.16) 38%, rgba(80,152,248,.16) 62%, rgba(80,152,248,.55));
+}
+.plan__glow {
+  position: absolute; inset: 0; z-index: -4; border-radius: inherit; pointer-events: none;
+  box-shadow: 0 40px 110px -48px rgba(24,80,224,.75);
+}
+/* the light and its spill ride round the sheet's edge together: soft round
+   blobs, centred on the corner they start from and moved along the four
+   sides by `translate`, which the compositor runs (the sides are the
+   container's own width and height, cqw and cqh). Keyed so the speed is
+   about even on a sheet a little over twice as tall as it is wide. */
+.plan__rim, .plan__glow { container-type: size; }
+.plan__rim::before, .plan__glow::before {
+  content: ""; position: absolute; border-radius: 50%;
+  animation: edge-run 7s linear infinite;
+}
+.plan__rim::before {
+  top: -65px; left: -65px; width: 130px; height: 130px;
+  background: radial-gradient(closest-side, #fff, rgba(150,190,255,.95) 28%, rgba(40,110,255,.45) 58%, rgba(24,80,224,0));
+}
+.plan__glow::before {
+  top: -85px; left: -85px; width: 170px; height: 170px;
+  background: radial-gradient(closest-side, rgba(70,135,255,var(--spill, .38)), rgba(24,80,224,calc(var(--spill, .38) * .3)) 55%, rgba(24,80,224,0));
+}
+/* on the light page the same light reads stronger: it is turned down there */
+:root[data-theme="light"] .plan__glow { --spill: .24; }
+@keyframes edge-run {
+  0%, 100% { translate: 0 0; }
+  18% { translate: 100cqw 0; }
+  50% { translate: 100cqw 100cqh; }
+  68% { translate: 0 100cqh; }
+}
+
+.plan--featured ::selection { background: rgba(24,80,224,.22); color: var(--contra-ink); }
+.plan--featured .plan__for { color: var(--contra-ink-3); }
+.plan--featured .plan__per, .plan--featured .plan__note { color: var(--contra-ink-3); }
+.plan--featured .plan__list { color: var(--contra-ink-2); }
+.plan--featured .plan__list::before { background: color-mix(in srgb, var(--contra-ink) 12%, transparent); }
+.plan--featured { --tick-ink: var(--cobalt); }
+/* (on the light page the chosen sheet is dark, and takes the lighter cobalt the dark page uses) */
+:root[data-theme="light"] .plan--featured { --tick-ink: #5098f8; }
+.plan--featured .plan__list li::before { background: color-mix(in srgb, var(--tick-ink) 17%, transparent); }
+.plan--featured .plan__list li::after { background: var(--tick-ink); }
+.plan--featured .btn--ink { background: var(--cobalt); color: #fff; border-color: transparent; box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 10px 26px -14px rgba(24,80,224,.9); }
+.plan--featured .btn--ink:hover { background: var(--cobalt-hi); }
+
+/* its badge catches the light now and then: a glint crosses it every few seconds */
+.plan__badge {
+  position: absolute; top: 18px; right: 18px; overflow: hidden; padding: 4px 10px; border-radius: var(--r-pill);
+  background: var(--cobalt); color: #fff; font-size: 11px; font-weight: 500; letter-spacing: .02em;
+}
+.plan__badge::after {
+  content: ""; position: absolute; inset: 0; width: 60%;
+  background: linear-gradient(100deg, rgba(255,255,255,0), rgba(255,255,255,.55), rgba(255,255,255,0));
+  translate: -140% 0; animation: badge-glint 5.5s var(--e-out) 2s infinite;
+}
+@keyframes badge-glint { 0% { translate: -140% 0; } 22%, 100% { translate: 240% 0; } }
+
+/* the pointer's light on the chosen sheet, cobalt on its own ground (the
+   other sheets have theirs in styles/pages.css) */
+@media (hover: hover) and (pointer: fine) {
+  .plan--featured::after {
+    content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+    background: radial-gradient(380px circle at var(--mx, 50%) var(--my, 0%), rgba(24,80,224,.1), rgba(24,80,224,0) 70%);
+    opacity: 0; transition: opacity var(--t-3) var(--e-out);
+  }
+  .plan--featured:hover::after { opacity: 1; }
+}
+
+/* --------------------------------------------------------------- arriving */
+/* The sheet comes up and settles, then what is on it, in reading order: its
+   name, who it is for, the price (whose digits count up to it), the note
+   and the button; then the rule draws across and the lines come in one
+   after another, each tick landing just after its line. The badge last,
+   with a little overshoot. A plan already on screen when the page opened
+   (.is-shown) is simply there. */
+.plans .plan.rv.is-in { animation: plan-in var(--t-4) var(--e-out) var(--d, 0s) both; }
+/* (in a phone's row, as it is swiped: styles/phone.css) */
+@keyframes plan-focus { 0%, 100% { transform: scale(.9); } 54% { transform: none; } }
+@keyframes plan-in {
+  from { opacity: 0; translate: 0 30px; scale: .97; }
+  to { opacity: 1; translate: none; scale: none; }
+}
+.plan__name { --k: 0; } .plan__for { --k: 1; } .plan__price { --k: 2; } .plan__note { --k: 3; } .plan__cta { --k: 4; }
+.plan.is-in > :is(.plan__name, .plan__for, .plan__price, .plan__note, .plan__cta) {
+  animation: rise var(--t-3) var(--e-out) calc(var(--d, 0s) + 90ms + var(--k) * 45ms) both;
+}
+.plan.is-in .odo__strip { animation: odo-in 1s var(--spring-soft) calc(var(--d, 0s) + 190ms + var(--c, 0) * 80ms) backwards; }
+@keyframes odo-in { from { transform: translateY(-1em); } }
+.plan.is-in .plan__list::before { animation: draw var(--t-4) var(--e-out) calc(var(--d, 0s) + 300ms) both; }
+.plan__list li:nth-child(2) { --k: 1; } .plan__list li:nth-child(3) { --k: 2; } .plan__list li:nth-child(4) { --k: 3; }
+.plan__list li:nth-child(5) { --k: 4; } .plan__list li:nth-child(6) { --k: 5; } .plan__list li:nth-child(7) { --k: 6; }
+.plan__list li:nth-child(n + 8) { --k: 7; }
+.plan.is-in .plan__list li { animation: rise var(--t-3) var(--e-out) calc(var(--d, 0s) + 340ms + var(--k, 0) * 40ms) both; }
+.plan.is-in .plan__list li::after { animation: tick-in var(--t-3) var(--spring-soft) calc(var(--d, 0s) + 420ms + var(--k, 0) * 40ms) both; }
+@keyframes tick-in { from { scale: 0; } }
+.plan.is-in > .plan__badge { animation: badge-in var(--t-3) var(--spring-soft) calc(var(--d, 0s) + 380ms) both; }
+@keyframes badge-in { from { opacity: 0; scale: .6; } }
+
+/* what loops is held by "Pause motion", and with reduced motion never runs */
+html.is-paused :is(.plan__rim, .plan__glow)::before, html.is-paused .plan__badge::after { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  :is(.plan__rim, .plan__glow)::before, .plan__badge::after { display: none; }
+  .plans .plan.rv.is-in { animation: fade var(--t-2) linear var(--d, 0s) both; }
+  .plan.is-in > *, .plan.is-in .plan__list li, .plan.is-in .plan__list li::after, .plan.is-in .plan__list::before,
+  .plan.is-in .odo__strip { animation: none; }
+  .odo__strip, .plan__go { transition: none; }
+}

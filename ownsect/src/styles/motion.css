@@ -1,0 +1,104 @@
+/* ------------------------------------------------------------- the feel */
+/* What every page shares when it is pressed, pointed at or scrolled, beyond
+   its own sections: buttons that give under a press and spring back, a shine
+   across the primary pill as a mouse arrives on it (and the pill leaning to
+   meet it, src/ui/magnetic.ts), rules that draw themselves in as their block
+   arrives, ticks that land row by row, and a line under the nav that fills
+   as the page is read. Transforms and opacity throughout, which the
+   compositor runs. With reduced motion only the reading line stays: it says
+   where you are, it does not move by itself. */
+
+@keyframes draw { from { scale: 0 1; } }
+@keyframes pop { from { scale: 0; opacity: 0; } }
+
+/* -------------------------------------------------------------- a press */
+/* the give is quick (--t-1) and the return a soft spring (--spring-soft), on
+   `scale`, so a pill's own transform and its lean toward the pointer
+   (`translate`) are left alone */
+.btn {
+  transition: background-color var(--t-2) var(--e-out), border-color var(--t-2) var(--e-out),
+              color var(--t-2) var(--e-out), box-shadow var(--t-2) var(--e-out),
+              transform var(--t-1) var(--e-out), scale var(--t-3) var(--spring-soft);
+}
+.btn:active {
+  transform: none; scale: .965;
+  transition-duration: var(--t-2), var(--t-2), var(--t-2), var(--t-2), var(--t-1), var(--t-1);
+  transition-timing-function: var(--e-out);
+}
+.nav__link { transition: color var(--t-2) var(--e-out), background-color var(--t-2) var(--e-out), scale var(--t-3) var(--spring-soft); }
+.nav__link:active { scale: .95; transition-duration: var(--t-2), var(--t-2), var(--t-1); transition-timing-function: var(--e-out); }
+
+/* --------------------------------------------- the shine on the primary */
+/* a band of light crosses the pill once as the mouse arrives; leaving puts it
+   back unseen, so the next arrival crosses again */
+:is(.btn--solid, .plan--featured .plan__cta) { position: relative; overflow: hidden; isolation: isolate; }
+:is(.btn--solid, .plan--featured .plan__cta)::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(100deg, rgba(255,255,255,0) 34%, rgba(255,255,255,.3) 50%, rgba(255,255,255,0) 66%);
+  translate: -101% 0;
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :is(.btn--solid, .plan--featured .plan__cta):hover::after { translate: 101% 0; transition: translate .8s var(--e-out); }
+}
+
+/* ------------------------------------------------- rules that draw in */
+/* the kicker's two rules grow out from its words as the heading arrives */
+.route__kicker.is-in::before { transform-origin: 100% 50%; animation: draw var(--t-4) var(--e-out) calc(var(--d, 0s) + 120ms) both; }
+.route__kicker.is-in::after { transform-origin: 0 50%; animation: draw var(--t-4) var(--e-out) calc(var(--d, 0s) + 120ms) both; }
+
+/* a numbered point's rule draws across, left to right, as the point arrives
+   (the rule was its top border: drawn now, so it can grow) */
+.point { border-top: 0; }
+.point::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: var(--line-3); transform-origin: 0 50%; }
+.point.is-in::before { animation: draw var(--t-4) var(--e-out) var(--d, 0s) both; }
+
+/* the closing band's bright seam draws out from its middle, and a glint runs
+   along it once (the seam was centred with a transform; centred by its
+   margins now, so it can scale about its own middle) */
+.route__cta { container-type: inline-size; }
+.route__cta::before { left: 0; right: 0; margin-inline: auto; transform: none; }
+.route__cta.is-in::before { animation: draw var(--t-4) var(--e-out) calc(var(--d, 0s) + 260ms) both; }
+.route__cta::after {
+  content: ""; position: absolute; top: 0; left: 50%; width: 96px; height: 1px; margin-left: -48px; pointer-events: none;
+  background: linear-gradient(90deg, rgba(255,255,255,0), #fff, rgba(255,255,255,0)); opacity: 0;
+}
+.route__cta.is-in::after { animation: seam-glint 1.5s cubic-bezier(.45,.05,.3,1) calc(var(--d, 0s) + 800ms) both; }
+@keyframes seam-glint {
+  0% { opacity: 0; translate: calc(-1 * min(250px, 33cqw)) 0; }
+  20%, 80% { opacity: 1; }
+  100% { opacity: 0; translate: min(250px, 33cqw) 0; }
+}
+
+/* ------------------------------------------------- ticks that land */
+/* in a sheet of figures each tick lands with a little overshoot, row after
+   row, once the sheet has settled; on a phone, switching the plan the table
+   shows lands its column's ticks again */
+.ctable tbody tr:nth-child(2) { --r: 1; } .ctable tbody tr:nth-child(3) { --r: 2; } .ctable tbody tr:nth-child(4) { --r: 3; }
+.ctable tbody tr:nth-child(5) { --r: 4; } .ctable tbody tr:nth-child(6) { --r: 5; } .ctable tbody tr:nth-child(7) { --r: 6; }
+.ctable tbody tr:nth-child(8) { --r: 7; } .ctable tbody tr:nth-child(9) { --r: 8; } .ctable tbody tr:nth-child(10) { --r: 9; }
+.ctable tbody tr:nth-child(11) { --r: 10; } .ctable tbody tr:nth-child(n + 12) { --r: 11; }
+.rv--clip.is-in .ctable td.yes::before { animation: pop var(--t-3) var(--spring-soft) calc(var(--d, 0s) + 320ms + var(--r, 0) * 35ms) both; }
+
+/* ------------------------------------------------- the reading line */
+/* past the ring, a hairline under the nav fills as the page is read: tied to
+   the page's own scroll, so it is never behind it; where the browser cannot
+   tie it, it is simply not there */
+.nav__progress {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, rgba(80,152,248,0), var(--cobalt-on) 35%, var(--cobalt-on));
+  transform-origin: 0 50%; scale: 0 1; opacity: 0;
+  transition: opacity var(--t-3) var(--e-out);
+}
+@supports (animation-timeline: scroll()) {
+  .nav__progress { animation: read linear both; animation-timeline: scroll(root block); }
+  body.is-past-ring .nav__progress { opacity: 1; }
+}
+@keyframes read { from { scale: 0 1; } to { scale: 1 1; } }
+
+/* ------------------------------------------------------ reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .route__kicker.is-in::before, .route__kicker.is-in::after, .point.is-in::before,
+  .route__cta.is-in::before, .route__cta.is-in::after, .rv--clip.is-in .ctable td.yes::before { animation: none; }
+  .btn, .nav__link { transition-property: background-color, border-color, color, box-shadow; }
+  .btn:active, .nav__link:active { scale: none; }
+}
